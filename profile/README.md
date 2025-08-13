@@ -1,4 +1,4 @@
-<h1 align="center">🔥 Firefly — OpenCore Banking Platform</h1>
+<h1 align="center">Firefly — OpenCore Banking Platform</h1>
 
 <p align="center">
   <i>Modern, modular, and open — build banks, not monoliths.</i>
