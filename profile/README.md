@@ -1,8 +1,3 @@
-<p align="center">
-  <img src="./assets/banner-light.png#gh-light-mode-only" alt="Firefly OpenCore Banking Platform — light banner" width="100%" />
-  <img src="./assets/banner-dark.png#gh-dark-mode-only" alt="Firefly OpenCore Banking Platform — dark banner" width="100%" />
-</p>
-
 <h1 align="center">🔥 Firefly — OpenCore Banking Platform</h1>
 
 <p align="center">
