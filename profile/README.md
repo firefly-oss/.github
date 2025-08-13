@@ -38,102 +38,6 @@
 
 ---
 
-## 🏗️ Architecture (Mermaid)
-
-```mermaid
-flowchart LR
-%% Client Layer
-    subgraph CLIENT [" 🌐 Client Channels "]
-        direction LR
-        A["📱 Mobile/Web<br/>Frontend Apps"]:::ui
-        B["🔧 Ops Console<br/>Admin Interface"]:::ui
-        C["🔗 Partners/APIs<br/>External Integration"]:::ui
-    end
-
-%% Edge Layer
-    subgraph EDGE [" 🛡️ Edge & Security "]
-        direction TB
-        G["🚪 API Gateway<br/>• JWT Verification<br/>• Rate Limiting<br/>• Request Routing"]:::gateway
-        IAM["🔐 Identity & Access<br/>• OIDC/SAML Auth<br/>• RBAC Permissions<br/>• Security Audit"]:::security
-    end
-
-%% Core Business Layer
-subgraph BUSINESS [" ⚙️ Core Business Services "]
-direction TB
-
-subgraph ROW1 [" "]
-SVC["🏢 Domain Services<br/>• Account Management<br/>• Customer Data<br/>• Product Catalog<br/>• Pricing Engine"]:::core
-LEDGER["📊 Financial Ledger<br/>• Transaction Postings<br/>• Journal Entries<br/>• Reconciliation"]:::core
-end
-
-subgraph ROW2 [" "]
-PAY["💳 Payment Hub<br/>• Payment Rails<br/>• Transaction Orchestration<br/>• Settlement Processing"]:::core
-RISK["⚖️ Risk & Compliance<br/>• KYC/KYB Verification<br/>• AML Monitoring<br/>• Risk Screening"]:::core
-end
-
-subgraph ROW3 [" "]
-RULES["📋 Policy Engine<br/>• Business Rules DSL<br/>• Decision Management<br/>• Rule Evaluation"]:::core
-INT["🔄 Integration Hub<br/>• Webhook Management<br/>• External Adapters<br/>• Async Job Processing"]:::core
-end
-end
-
-%% Platform Layer
-subgraph PLATFORM [" 🏗️ Platform & Operations "]
-direction LR
-DATA["📈 Data Platform<br/>• Event Streaming<br/>• Change Data Capture<br/>• Analytics & BI<br/>• System Observability"]:::platform
-OPS["🛠️ Platform Operations<br/>• CI/CD Pipeline<br/>• Infrastructure as Code<br/>• SRE Monitoring<br/>• Performance Tuning"]:::platform
-end
-
-%% Connections - Client to Edge
-A --> G
-B --> G
-C --> G
-
-%% Edge Internal
-G --> IAM
-IAM --> G
-
-%% Edge to Business
-G --> SVC
-G --> PAY
-
-%% Business Service Interconnections
-SVC --> LEDGER
-SVC --> PAY
-SVC --> RISK
-PAY --> LEDGER
-RISK --> RULES
-RULES --> SVC
-INT --> SVC
-INT --> PAY
-INT --> RISK
-
-%% Business to Platform
-SVC --> DATA
-LEDGER --> DATA
-PAY --> DATA
-RISK --> DATA
-RULES --> DATA
-INT --> DATA
-
-%% Platform Internal
-DATA -.->|"📊 metrics & logs"| OPS
-G -.->|"🔍 traces & telemetry"| OPS
-OPS -.->|"🔄 deployment & scaling"| BUSINESS
-
-%% Enhanced Styling
-classDef ui fill:#f8fafc,stroke:#3b82f6,stroke-width:3px,color:#1e40af,font-weight:bold;
-classDef gateway fill:#fef3c7,stroke:#f59e0b,stroke-width:3px,color:#92400e,font-weight:bold;
-classDef security fill:#fee2e2,stroke:#ef4444,stroke-width:3px,color:#b91c1c,font-weight:bold;
-classDef core fill:#ecfdf5,stroke:#10b981,stroke-width:2px,color:#047857,font-weight:bold;
-classDef platform fill:#f3e8ff,stroke:#8b5cf6,stroke-width:3px,color:#6b21a8,font-weight:bold;
-
-%% Subgraph Styling
-classDef subgraphStyle fill:#f9fafb,stroke:#6b7280,stroke-width:2px,color:#374151;
-```
-
----
-
 ## 🧱 Principles
 
 - **API-first** — clean, well-typed contracts and SDKs.
@@ -202,5 +106,5 @@ Before you contribute:
 
 <p align="center">
   <sub>Made with ❤️ by the <b>firefly-oss</b> community.</sub><br>
-  <sub>© Firefly. Some repositories may offer enterprise add-ons; see individual licenses.</sub>
+  <sub>© 2025 Firefly Software Solutions Inc. Some repositories may offer enterprise add-ons; see individual licenses.</sub>
 </p>
