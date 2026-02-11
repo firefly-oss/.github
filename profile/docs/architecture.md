@@ -212,7 +212,6 @@ graph TB
         
         subgraph "Integration Adapters"
             ADAPT1[library-baas-adapter<br/>BaaS Adapter Interface]
-            ADAPT2[library-baas-treezor-impl<br/>Treezor Implementation]
             ADAPT3[library-idp-adapter<br/>IDP Adapter Interface]
             ADAPT4[library-idp-keycloak-impl<br/>Keycloak Implementation]
             ADAPT5[library-sdk-treezor<br/>Treezor SDK]
@@ -415,7 +414,7 @@ graph TB
 
 #### Integration Adapters
 - `library-baas-adapter` - Banking-as-a-Service provider interface
-- `library-baas-treezor-impl` - Treezor BaaS implementation
+
 - `library-idp-adapter` - Identity Provider adapter interface
 - `library-idp-keycloak-impl` - Keycloak identity provider implementation
 - `library-sdk-treezor` - Treezor SDK wrapper and utilities
