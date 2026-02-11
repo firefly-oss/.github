@@ -198,29 +198,29 @@ graph TB
     subgraph "Shared Libraries & Adapters"
         direction LR
         subgraph "Core Libraries"
-            LIB1[lib-parent-pom<br/>Maven Parent]
-            LIB2[lib-common-core<br/>Core Utilities]
-            LIB3[lib-common-domain<br/>Domain Modeling]
-            LIB4[lib-common-web<br/>Web Utilities]
-            LIB5[lib-common-r2dbc<br/>Reactive Data Access]
-            LIB6[lib-common-auth<br/>Authentication]
-            LIB7[lib-utils<br/>General Utilities]
-            LIB8[lib-commons-validators<br/>Validation]
-            LIB9[lib-common-vaadin<br/>Vaadin UI]
-            LIB10[lib-common-application<br/>Application Framework]
+            LIB1[firefly-parent<br/>Maven Parent]
+            LIB2[library-common-core<br/>Core Utilities]
+            LIB3[library-common-domain<br/>Domain Modeling]
+            LIB4[library-common-web<br/>Web Utilities]
+            LIB5[library-common-r2dbc<br/>Reactive Data Access]
+            LIB6[library-common-auth<br/>Authentication]
+            LIB7[library-utils<br/>General Utilities]
+            LIB8[library-commons-validators<br/>Validation]
+            LIB9[library-common-vaadin<br/>Vaadin UI]
+            LIB10[library-common-application<br/>Application Framework]
         end
         
         subgraph "Integration Adapters"
-            ADAPT1[lib-baas-adapter<br/>BaaS Adapter Interface]
-            ADAPT2[lib-baas-treezor-impl<br/>Treezor Implementation]
-            ADAPT3[lib-idp-adapter<br/>IDP Adapter Interface]
-            ADAPT4[lib-idp-keycloak-impl<br/>Keycloak Implementation]
-            ADAPT5[lib-sdk-treezor<br/>Treezor SDK]
+            ADAPT1[library-baas-adapter<br/>BaaS Adapter Interface]
+            ADAPT2[library-baas-treezor-impl<br/>Treezor Implementation]
+            ADAPT3[library-idp-adapter<br/>IDP Adapter Interface]
+            ADAPT4[library-idp-keycloak-impl<br/>Keycloak Implementation]
+            ADAPT5[library-sdk-treezor<br/>Treezor SDK]
         end
         
         subgraph "Platform Libraries"
-            PLAT1[lib-transactional-engine<br/>Transaction Engine]
-            PLAT2[lib-plugin-manager<br/>Plugin Management]
+            PLAT1[library-transactional-engine<br/>Transaction Engine]
+            PLAT2[library-plugin-manager<br/>Plugin Management]
         end
     end
     
@@ -402,27 +402,27 @@ graph TB
 **Purpose**: Reusable components, utilities, and external integrations
 
 #### Core Libraries
-- `lib-parent-pom` - Maven parent POM with shared configurations
-- `lib-common-core` - Core utilities and common patterns
-- `lib-common-domain` - Domain modeling utilities and DDD support
-- `lib-common-web` - Web layer utilities and configurations
-- `lib-common-r2dbc` - Reactive database access with advanced filtering
-- `lib-common-auth` - Authentication and authorization framework
-- `lib-utils` - General-purpose utilities and helpers
-- `lib-commons-validators` - Data validation utilities
-- `lib-common-vaadin` - Vaadin UI framework utilities
-- `lib-common-application` - Application framework utilities
+- `firefly-parent` - Maven parent POM with shared configurations
+- `library-common-core` - Core utilities and common patterns
+- `library-common-domain` - Domain modeling utilities and DDD support
+- `library-common-web` - Web layer utilities and configurations
+- `library-common-r2dbc` - Reactive database access with advanced filtering
+- `library-common-auth` - Authentication and authorization framework
+- `library-utils` - General-purpose utilities and helpers
+- `library-commons-validators` - Data validation utilities
+- `library-common-vaadin` - Vaadin UI framework utilities
+- `library-common-application` - Application framework utilities
 
 #### Integration Adapters
-- `lib-baas-adapter` - Banking-as-a-Service provider interface
-- `lib-baas-treezor-impl` - Treezor BaaS implementation
-- `lib-idp-adapter` - Identity Provider adapter interface
-- `lib-idp-keycloak-impl` - Keycloak identity provider implementation
-- `lib-sdk-treezor` - Treezor SDK wrapper and utilities
+- `library-baas-adapter` - Banking-as-a-Service provider interface
+- `library-baas-treezor-impl` - Treezor BaaS implementation
+- `library-idp-adapter` - Identity Provider adapter interface
+- `library-idp-keycloak-impl` - Keycloak identity provider implementation
+- `library-sdk-treezor` - Treezor SDK wrapper and utilities
 
 #### Platform Libraries
-- `lib-transactional-engine` - Transaction processing engine
-- `lib-plugin-manager` - Plugin architecture and lifecycle management
+- `library-transactional-engine` - Transaction processing engine
+- `library-plugin-manager` - Plugin architecture and lifecycle management
 
 ## Technology Stack
 

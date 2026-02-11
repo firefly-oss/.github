@@ -61,17 +61,17 @@
 
 ### Module Structure Pattern
 ```
-lib-module-name/
-├── lib-module-name-api/        # Public interfaces and contracts
-├── lib-module-name-core/       # Core implementation logic
-├── lib-module-name-config/     # Configuration and auto-configuration
-├── lib-module-name-test/       # Test utilities and fixtures
+library-module-name/
+├── library-module-name-api/        # Public interfaces and contracts
+├── library-module-name-core/       # Core implementation logic
+├── library-module-name-config/     # Configuration and auto-configuration
+├── library-module-name-test/       # Test utilities and fixtures
 └── pom.xml                    # Maven configuration and dependencies
 ```
 
 ## Core Common Libraries
 
-### 1. lib-common-core
+### 1. library-common-core
 
 **Purpose**: Foundational utilities and common patterns used across all platform services.
 
@@ -139,7 +139,7 @@ public class Result<T> {
 - **Filtering**: Dynamic filtering framework
 - **Response Wrappers**: Consistent API response structures
 
-### 2. lib-common-auth
+### 2. library-common-auth
 
 **Purpose**: Authentication and authorization utilities for secure service communication.
 
@@ -196,7 +196,7 @@ public class JwtTokenProvider {
 - **Security Annotations**: Method-level security annotations
 - **CORS Configuration**: Cross-origin resource sharing setup
 
-### 3. lib-common-r2dbc
+### 3. library-common-r2dbc
 
 **Purpose**: Reactive database connectivity and ORM utilities for PostgreSQL integration.
 
@@ -250,7 +250,7 @@ public class R2dbcConfig extends AbstractR2dbcConfiguration {
 - **Database Monitoring**: Connection and query performance monitoring
 - **Health Checks**: Database connectivity health checks
 
-### 4. lib-common-kafka
+### 4. library-common-kafka
 
 **Purpose**: Apache Kafka integration and event-driven messaging utilities.
 
@@ -300,7 +300,7 @@ public class EventPublisher {
 - **Monitoring**: Consumer lag and throughput monitoring
 - **Configuration Management**: Environment-specific Kafka configuration
 
-### 5. lib-common-logging
+### 5. library-common-logging
 
 **Purpose**: Centralized logging, monitoring, and observability utilities.
 
@@ -350,7 +350,7 @@ public class StructuredLogger {
 - **Health Indicators**: Application health check indicators
 - **Alert Integration**: Alerting system integration
 
-### 6. lib-common-validation
+### 6. library-common-validation
 
 **Purpose**: Comprehensive data validation framework for business rules and data integrity.
 
@@ -404,7 +404,7 @@ public class BusinessRuleValidator {
 
 ## External System Adapters
 
-### 1. lib-baas-adapter
+### 1. library-baas-adapter
 
 **Purpose**: Banking-as-a-Service provider integration and abstraction layer.
 
@@ -459,7 +459,7 @@ public class BaasService {
 - **Treasury Prime**: Treasury Prime banking infrastructure
 - **Bond**: Bond financial services platform
 
-### 2. lib-idp-adapter
+### 2. library-idp-adapter
 
 **Purpose**: Identity Provider integration for authentication and identity management.
 
@@ -515,7 +515,7 @@ public class IdentityService {
 - **Azure AD**: Microsoft Azure Active Directory
 - **AWS Cognito**: Amazon Cognito user pools
 
-### 3. lib-payment-adapter
+### 3. library-payment-adapter
 
 **Purpose**: Payment network and processor integration abstraction layer.
 
@@ -539,7 +539,7 @@ public class IdentityService {
 - **RTP**: Real-Time Payments network
 - **SWIFT**: International wire transfers
 
-### 4. lib-credit-bureau-adapter
+### 4. library-credit-bureau-adapter
 
 **Purpose**: Credit bureau integration for credit reporting and monitoring.
 
