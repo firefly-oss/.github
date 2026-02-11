@@ -67,7 +67,6 @@ Implements a zero-trust security model with multiple layers of protection, compr
 graph TB
     subgraph "Application/Process Layer"
         direction TB
-        APP1[core-orchestrator<br/>Process Orchestration]
         APP2[administration-backoffice<br/>Admin Operations]
         APP3[operations-backoffice<br/>Operations Management]
     end
@@ -233,8 +232,6 @@ graph TB
         INF6[Istio<br/>Service Mesh]
     end
     
-    APP1 --> CBS1
-    APP1 --> CLS1
     AS1 --> CBS1
     CBS1 --> CPS1
     CLS1 --> CPS1
@@ -247,9 +244,6 @@ graph TB
 
 ### 1. Application/Process Layer
 **Purpose**: High-level business process orchestration and user-facing applications
-
-#### Process Orchestration
-- `core-orchestrator` - Business process workflow engine and orchestration
 
 #### Administrative Applications
 - `administration-backoffice` - System administration and configuration

@@ -29,70 +29,7 @@ application-service/
 
 Based on the actual codebase analysis, here are the confirmed application services:
 
-### 1. core-orchestrator
-
-**Purpose**: Workflow orchestration service built with Spring Boot and Camunda 8 (Zeebe) for managing customer-related business processes.
-
-#### Key Capabilities
-- **Workflow Definition**: BPMN 2.0 compliant workflow modeling
-- **Process Orchestration**: Multi-service transaction coordination
-- **State Management**: Persistent workflow state tracking
-- **Compensation Handling**: Automatic rollback and error recovery
-- **Event Correlation**: Business event matching and routing
-- **Process Monitoring**: Real-time workflow visibility and analytics
-- **Dynamic Routing**: Conditional process flow based on business rules
-- **External System Integration**: Third-party service coordination
-
-#### Workflow Examples
-- **Customer Onboarding**: End-to-end customer acquisition process
-- **Loan Origination**: Multi-step loan application and approval workflow
-- **Account Opening**: Comprehensive account setup and activation
-- **Payment Processing**: Multi-rail payment orchestration
-- **Fraud Investigation**: Suspicious activity investigation workflows
-- **Regulatory Reporting**: Automated compliance report generation
-
-#### Data Model Highlights
-```mermaid
-erDiagram
-    WorkflowDefinition ||--o{ WorkflowInstance : "instantiated_as"
-    WorkflowInstance ||--o{ ProcessStep : "contains"
-    ProcessStep ||--o{ StepExecution : "executed_as"
-    WorkflowInstance ||--o{ ProcessVariable : "maintains"
-    WorkflowDefinition ||--o{ ProcessRule : "governed_by"
-    StepExecution ||--o{ CompensationAction : "compensated_by"
-    
-    WorkflowInstance {
-        UUID processId PK
-        String processDefinitionId
-        String processVersion
-        ProcessStatusEnum status
-        LocalDateTime startTime
-        LocalDateTime endTime
-        String initiatedBy
-        Map processVariables
-        String businessKey
-        String currentStep
-    }
-```
-
-#### API Endpoints
-- `POST /api/v1/processes/start` - Start workflow instance
-- `GET /api/v1/processes/{processId}` - Process status and details
-- `POST /api/v1/processes/{processId}/signal` - Send signal to process
-- `PUT /api/v1/processes/{processId}/variables` - Update process variables
-- `POST /api/v1/processes/{processId}/complete-step` - Complete process step
-- `GET /api/v1/process-definitions` - Available workflow definitions
-- `POST /api/v1/processes/{processId}/cancel` - Cancel process instance
-
-#### Integration Points
-- **All Domain Services**: Service orchestration and coordination
-- **Event Bus**: Process event publishing and consumption
-- **External APIs**: Third-party system integration
-- **Notification Service**: Process status notifications
-- **Audit Service**: Process execution auditing
-- **Configuration Service**: Business rule evaluation
-
-### 2. app-customer-onboarding
+### 1. app-customer-onboarding
 
 **Purpose**: Specialized application service for customer acquisition and digital onboarding workflows.
 
