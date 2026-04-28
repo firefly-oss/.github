@@ -82,13 +82,16 @@ jobs:
           SKIP_FLAGS="-Dmaven.test.skip=true -DskipOpenApiGen"
 
           if [ -n "${{ inputs.deploy-module }}" ]; then
-            echo "Deploying single module: ${{ inputs.deploy-module }}"
+            echo "Deploying aggregate pom + module: ${{ inputs.deploy-module }}"
 
-            # Install dependencies first
-            mvn -B -U install $SKIP_FLAGS -pl ${{ inputs.deploy-module }} -am 2>&1 | tail -5
+            # Install dependencies first (also-make pulls in interfaces/models/core)
+            mvn -B -U install $SKIP_FLAGS -pl :${{ inputs.deploy-module }} -am 2>&1 | tail -5
 
-            # Deploy only the target module
-            mvn -B deploy $SKIP_FLAGS -pl ${{ inputs.deploy-module }} $DEPLOY_REPO \
+            # Deploy aggregate root pom (.) + the named module only.
+            # The aggregate pom is required because the named module's pom
+            # inherits from it; consumers pulling the SDK need to resolve
+            # its parent. -pl .,:X selects the root reactor + module X.
+            mvn -B deploy $SKIP_FLAGS -pl .,:${{ inputs.deploy-module }} $DEPLOY_REPO \
               2>&1 | tee /tmp/mvn-deploy.log || {
                 if grep -q "status code: 409" /tmp/mvn-deploy.log; then
                   echo "::warning::Artifact already exists (409)"
