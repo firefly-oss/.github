@@ -104,7 +104,8 @@ jobs:
             spring-boot:build-image \
             -Pbuild-image \
             -Dmaven.test.skip=true \
-            -Ddocker.image.platform=${{ inputs.image-platform }}
+            -Ddocker.image.platform=${{ inputs.image-platform }} \
+            -Doci.source=https://github.com/${{ github.repository }}
         env:
           PACKAGES_TOKEN: ${{ secrets.PACKAGES_TOKEN }}
 
@@ -120,21 +121,9 @@ jobs:
           docker push ${{ steps.meta.outputs.image }}:${{ steps.meta.outputs.version }}
           docker push ${{ steps.meta.outputs.image }}:latest
 
-      - name: Link GHCR package to this repo (idempotent)
-        env:
-          GH_TOKEN: ${{ secrets.PACKAGES_TOKEN }}
-          PACKAGE: ${{ steps.meta.outputs.artifact }}
-          REPO: ${{ github.event.repository.name }}
-        run: |
-          if gh api -X PUT \
-              "orgs/firefly-oss/packages/container/${PACKAGE}/repository" \
-              -f repository="${REPO}" \
-              -f role=write 2>/tmp/link.err; then
-            echo "Linked ${PACKAGE} -> firefly-oss/${REPO}"
-          else
-            echo "::warning::Linkage call returned non-zero (already linked or PAT missing admin:packages)"
-            cat /tmp/link.err || true
-          fi
+      # Note: GHCR auto-links the package to its source repo via the OCI label
+      # `org.opencontainers.image.source` (set by Paketo from BP_OCI_SOURCE,
+      # threaded from -Doci.source above). No explicit linkage API call needed.
 
       - name: Summary
         run: |
