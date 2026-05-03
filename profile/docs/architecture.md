@@ -733,7 +733,7 @@ This architecture enables financial institutions to **build banking products lik
 
 <div align="center">
 
-**🎆 Built with ❤️ by [Firefly Software Solutions Inc.](https://firefly-solutions.io)**
+**🎆 Built with ❤️ by [Firefly Software Foundation.](https://firefly-solutions.io)**
 
 *Empowering the next generation of financial services*
 

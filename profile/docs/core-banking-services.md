@@ -569,7 +569,7 @@ This layer enables financial institutions to **operate banking infrastructure li
 
 <div align="center">
 
-**🎆 Built with ❤️ by [Firefly Software Solutions Inc.](https://firefly-solutions.io)**
+**🎆 Built with ❤️ by [Firefly Software Foundation.](https://firefly-solutions.io)**
 
 *Empowering the next generation of financial services*
 
