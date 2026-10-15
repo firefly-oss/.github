@@ -1,5 +1,10 @@
 <a href="https://fireflysoftware.io/">
-  <img src="https://fireflysoftware.io/social.png" alt="Firefly Software. Delegate the work. Keep the decisions. Banking and insurance operations, run by AI agents and software." width="100%">
+<picture>
+  <source media="(max-width: 640px) and (prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/firefly-oss/.github/main/profile/assets/banner-narrow-dark.svg">
+  <source media="(max-width: 640px)" srcset="https://raw.githubusercontent.com/firefly-oss/.github/main/profile/assets/banner-narrow-light.svg">
+  <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/firefly-oss/.github/main/profile/assets/banner-dark.svg">
+  <img src="https://raw.githubusercontent.com/firefly-oss/.github/main/profile/assets/banner-light.svg" alt="Firefly Software. Delegate the work. Keep the decisions. Banking and insurance operations, run by AI agents and software." width="100%">
+</picture>
 </a>
 
 # Firefly Software
@@ -14,15 +19,12 @@ This organization hosts the public business modules behind Firefly OpenPlatform.
 
 Firefly OpenPlatform combines business modules with your own services and existing systems through APIs and events. Use the capabilities that fit the operation, keep the systems that already work, and extend the parts your team owns.
 
-```mermaid
-flowchart TB
-    channels["Customers, partners, and operations teams"]
-    journeys["Journeys and decisions within your policies"]
-    modules["OpenPlatform business modules"]
-    connections["APIs, events, and adapters"]
-    systems["Your core systems and external providers"]
-    channels --> journeys --> modules --> connections --> systems
-```
+<picture>
+  <source media="(max-width: 640px) and (prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/firefly-oss/.github/main/profile/assets/architecture-narrow-dark.svg">
+  <source media="(max-width: 640px)" srcset="https://raw.githubusercontent.com/firefly-oss/.github/main/profile/assets/architecture-narrow-light.svg">
+  <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/firefly-oss/.github/main/profile/assets/architecture-dark.svg">
+  <img src="https://raw.githubusercontent.com/firefly-oss/.github/main/profile/assets/architecture-light.svg" alt="Conceptual OpenPlatform composition: customer journeys use Firefly modules; APIs and events connect your core and specialist systems. Your institution retains decision authority." width="100%">
+</picture>
 
 *Conceptual composition. The service design defines the modules, integrations, and responsibilities for each implementation.*
 
