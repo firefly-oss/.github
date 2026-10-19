@@ -65,10 +65,10 @@ Implements a zero-trust security model with multiple layers of protection, compr
 
 ```mermaid
 graph TB
-    subgraph "Application/Process Layer"
+    subgraph "Application Layer"
         direction TB
-        APP2[administration-backoffice<br/>Admin Operations]
-        APP3[operations-backoffice<br/>Operations Management]
+        APP1[app-authenticator<br/>Authentication Gateway]
+        APP2[app-configurator-masters<br/>Configuration Masters]
     end
     
     subgraph "Application Services Layer"
@@ -205,7 +205,6 @@ graph TB
             LIB6[library-common-auth<br/>Authentication]
             LIB7[library-utils<br/>General Utilities]
             LIB8[library-commons-validators<br/>Validation]
-            LIB9[library-common-vaadin<br/>Vaadin UI]
             LIB10[library-common-application<br/>Application Framework]
         end
         
@@ -242,12 +241,12 @@ graph TB
 
 ## Domain Architecture
 
-### 1. Application/Process Layer
-**Purpose**: High-level business process orchestration and user-facing applications
+### 1. Application Layer
+**Purpose**: Thin application gateways and configuration entry points
 
-#### Administrative Applications
-- `administration-backoffice` - System administration and configuration
-- `operations-backoffice` - Operational management and monitoring
+#### Platform Applications
+- `app-authenticator` - Authentication gateway and identity orchestration
+- `app-configurator-masters` - Configuration masters aggregation gateway
 
 ### 2. Application Services Layer
 **Purpose**: Business application services and customer-facing applications
@@ -403,7 +402,6 @@ graph TB
 - `library-common-auth` - Authentication and authorization framework
 - `library-utils` - General-purpose utilities and helpers
 - `library-commons-validators` - Data validation utilities
-- `library-common-vaadin` - Vaadin UI framework utilities
 - `library-common-application` - Application framework utilities
 
 #### Integration Adapters
