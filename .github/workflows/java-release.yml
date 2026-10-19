@@ -93,6 +93,22 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ github.token }}
 
+      # This SDK package is private, so another repo's GITHUB_TOKEN cannot read it
+      # from GitHub Packages. Build it from the public source checkout instead.
+      - name: Checkout domain-common-sca
+        if: github.repository == 'firefly-oss/exp-lending' || github.repository == 'firefly-oss/exp-security'
+        uses: actions/checkout@v4
+        with:
+          repository: firefly-oss/domain-common-sca
+          ref: main
+          path: .ci/domain-common-sca
+
+      - name: Install domain-common-sca SDK
+        if: github.repository == 'firefly-oss/exp-lending' || github.repository == 'firefly-oss/exp-security'
+        run: mvn -B -ntp -f .ci/domain-common-sca/pom.xml -pl :domain-common-sca-sdk -am install -Dmaven.test.skip=true -DskipOpenApiGen
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+
       - name: Deploy
         run: |
           set -o pipefail
