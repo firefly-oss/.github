@@ -98,9 +98,11 @@ jobs:
       - name: Extract image metadata
         id: meta
         run: |
-          set -o pipefail
-          VERSION=$(mvn -B -ntp help:evaluate -Dexpression=project.version -DforceStdout | tail -n 1)
-          ARTIFACT=$(mvn -B -ntp -pl ${{ inputs.web-module }} help:evaluate -Dexpression=project.artifactId -DforceStdout | tail -n 1)
+          set -euo pipefail
+          mvn -B -ntp help:evaluate -Dexpression=project.version -Doutput=/tmp/ff-version.txt
+          mvn -B -ntp -pl "${WEB_MODULE}" help:evaluate -Dexpression=project.artifactId -Doutput=/tmp/ff-artifact.txt
+          VERSION=$(tr -d '[:space:]' < /tmp/ff-version.txt)
+          ARTIFACT=$(tr -d '[:space:]' < /tmp/ff-artifact.txt)
           if [ -z "$VERSION" ] || [ -z "$ARTIFACT" ]; then
             echo "::error::Could not resolve Maven coordinates"
             exit 1
@@ -110,6 +112,7 @@ jobs:
           echo "image=ghcr.io/firefly-oss/$ARTIFACT" >> "$GITHUB_OUTPUT"
         env:
           GITHUB_TOKEN: ${{ github.token }}
+          WEB_MODULE: ${{ inputs.web-module }}
 
       - name: Build dependencies
         run: mvn -B -ntp -pl ${{ inputs.web-module }} -am install -Dmaven.test.skip=true -DskipOpenApiGen
