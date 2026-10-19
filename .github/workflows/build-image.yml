@@ -151,9 +151,7 @@ jobs:
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
-          # core-banking-ledger-web rejects the workflow token (write_package).
-          # The org packages token can update that existing private package.
-          password: ${{ github.repository == 'firefly-oss/core-banking-ledger' && secrets.PACKAGES_TOKEN || github.token }}
+          password: ${{ github.token }}
 
       - name: Push container image
         run: |
