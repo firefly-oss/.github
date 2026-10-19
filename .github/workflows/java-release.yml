@@ -31,6 +31,24 @@ jobs:
           distribution: temurin
           cache: maven
 
+      # Public platform POMs. Installed locally so a 401 from GitHub Packages
+      # cannot abort resolution. Jafly 26.10.19+ is on Maven Central.
+      - name: Checkout firefly-bom
+        if: github.repository != 'firefly-oss/firefly-bom'
+        uses: actions/checkout@v4
+        with:
+          repository: firefly-oss/firefly-bom
+          ref: main
+          path: .ci/firefly-bom
+
+      - name: Checkout firefly-parent
+        if: github.repository != 'firefly-oss/firefly-parent' && github.repository != 'firefly-oss/firefly-bom'
+        uses: actions/checkout@v4
+        with:
+          repository: firefly-oss/firefly-parent
+          ref: main
+          path: .ci/firefly-parent
+
       - name: Configure Maven repositories
         run: |
           mkdir -p ~/.m2
@@ -41,13 +59,8 @@ jobs:
             <servers>
               <server>
                 <id>github-firefly-oss</id>
-                <username>${env.GITHUB_ACTOR}</username>
-                <password>${env.PACKAGES_TOKEN}</password>
-              </server>
-              <server>
-                <id>github-fireflyframework</id>
-                <username>${env.GITHUB_ACTOR}</username>
-                <password>${env.PACKAGES_TOKEN}</password>
+                <username>x-access-token</username>
+                <password>${env.GITHUB_TOKEN}</password>
               </server>
             </servers>
             <profiles>
@@ -57,13 +70,7 @@ jobs:
                   <repository>
                     <id>github-firefly-oss</id>
                     <url>https://maven.pkg.github.com/firefly-oss/firefly-parent</url>
-                    <snapshots><enabled>true</enabled></snapshots>
-                    <releases><enabled>true</enabled></releases>
-                  </repository>
-                  <repository>
-                    <id>github-fireflyframework</id>
-                    <url>https://maven.pkg.github.com/fireflyframework/fireflyframework-parent</url>
-                    <snapshots><enabled>true</enabled></snapshots>
+                    <snapshots><enabled>true</enabled><updatePolicy>never</updatePolicy></snapshots>
                     <releases><enabled>true</enabled></releases>
                   </repository>
                 </repositories>
@@ -75,6 +82,17 @@ jobs:
           </settings>
           EOF
 
+      - name: Install platform POMs
+        if: github.repository != 'firefly-oss/firefly-bom'
+        run: |
+          set -euo pipefail
+          mvn -B -ntp -f .ci/firefly-bom/pom.xml install -DskipTests
+          if [ -f .ci/firefly-parent/pom.xml ]; then
+            mvn -B -ntp -N -f .ci/firefly-parent/pom.xml install -DskipTests
+          fi
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+
       - name: Deploy
         run: |
           set -o pipefail
@@ -85,13 +103,13 @@ jobs:
             echo "Deploying aggregate pom + module: ${{ inputs.deploy-module }}"
 
             # Install dependencies first (also-make pulls in interfaces/models/core)
-            mvn -B -U install $SKIP_FLAGS -pl :${{ inputs.deploy-module }} -am 2>&1 | tail -5
+            mvn -B -ntp install $SKIP_FLAGS -pl :${{ inputs.deploy-module }} -am
 
             # Deploy aggregate root pom (.) + the named module only.
             # The aggregate pom is required because the named module's pom
             # inherits from it; consumers pulling the SDK need to resolve
             # its parent. -pl .,:X selects the root reactor + module X.
-            mvn -B deploy $SKIP_FLAGS -pl .,:${{ inputs.deploy-module }} $DEPLOY_REPO \
+            mvn -B -ntp deploy $SKIP_FLAGS -pl .,:${{ inputs.deploy-module }} $DEPLOY_REPO \
               2>&1 | tee /tmp/mvn-deploy.log || {
                 if grep -q "status code: 409" /tmp/mvn-deploy.log; then
                   echo "::warning::Artifact already exists (409)"
@@ -102,7 +120,7 @@ jobs:
               }
           else
             echo "Deploying entire project"
-            mvn -B -U deploy $SKIP_FLAGS $DEPLOY_REPO \
+            mvn -B -ntp deploy $SKIP_FLAGS $DEPLOY_REPO \
               2>&1 | tee /tmp/mvn-deploy.log || {
                 if grep -q "status code: 409" /tmp/mvn-deploy.log && \
                    [ -z "$(grep -i 'Failed to deploy' /tmp/mvn-deploy.log | grep -v '409' || true)" ]; then
@@ -114,7 +132,7 @@ jobs:
               }
           fi
         env:
-          PACKAGES_TOKEN: ${{ secrets.PACKAGES_TOKEN }}
+          GITHUB_TOKEN: ${{ github.token }}
 
   post-release:
     needs: [github-packages]

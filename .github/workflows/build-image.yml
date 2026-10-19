@@ -38,6 +38,22 @@ jobs:
           distribution: temurin
           cache: maven
 
+      # Public platform POMs. Installed locally so resolution does not depend on
+      # the org PACKAGES_TOKEN. Jafly 26.10.19+ comes from Maven Central.
+      - name: Checkout firefly-bom
+        uses: actions/checkout@v4
+        with:
+          repository: firefly-oss/firefly-bom
+          ref: main
+          path: .ci/firefly-bom
+
+      - name: Checkout firefly-parent
+        uses: actions/checkout@v4
+        with:
+          repository: firefly-oss/firefly-parent
+          ref: main
+          path: .ci/firefly-parent
+
       - name: Configure Maven repositories
         run: |
           mkdir -p ~/.m2
@@ -48,13 +64,8 @@ jobs:
             <servers>
               <server>
                 <id>github-firefly-oss</id>
-                <username>${env.GITHUB_ACTOR}</username>
-                <password>${env.PACKAGES_TOKEN}</password>
-              </server>
-              <server>
-                <id>github-fireflyframework</id>
-                <username>${env.GITHUB_ACTOR}</username>
-                <password>${env.PACKAGES_TOKEN}</password>
+                <username>x-access-token</username>
+                <password>${env.GITHUB_TOKEN}</password>
               </server>
             </servers>
             <profiles>
@@ -64,13 +75,7 @@ jobs:
                   <repository>
                     <id>github-firefly-oss</id>
                     <url>https://maven.pkg.github.com/firefly-oss/firefly-parent</url>
-                    <snapshots><enabled>true</enabled></snapshots>
-                    <releases><enabled>true</enabled></releases>
-                  </repository>
-                  <repository>
-                    <id>github-fireflyframework</id>
-                    <url>https://maven.pkg.github.com/fireflyframework/fireflyframework-parent</url>
-                    <snapshots><enabled>true</enabled></snapshots>
+                    <snapshots><enabled>true</enabled><updatePolicy>never</updatePolicy></snapshots>
                     <releases><enabled>true</enabled></releases>
                   </repository>
                 </repositories>
@@ -82,39 +87,52 @@ jobs:
           </settings>
           EOF
 
+      - name: Install platform POMs
+        run: |
+          set -euo pipefail
+          mvn -B -ntp -f .ci/firefly-bom/pom.xml install -DskipTests
+          mvn -B -ntp -N -f .ci/firefly-parent/pom.xml install -DskipTests
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+
       - name: Extract image metadata
         id: meta
         run: |
-          VERSION=$(mvn help:evaluate -Dexpression=project.version -q -DforceStdout)
-          ARTIFACT=$(mvn -pl ${{ inputs.web-module }} help:evaluate -Dexpression=project.artifactId -q -DforceStdout)
+          set -o pipefail
+          VERSION=$(mvn -B -ntp help:evaluate -Dexpression=project.version -DforceStdout | tail -n 1)
+          ARTIFACT=$(mvn -B -ntp -pl ${{ inputs.web-module }} help:evaluate -Dexpression=project.artifactId -DforceStdout | tail -n 1)
+          if [ -z "$VERSION" ] || [ -z "$ARTIFACT" ]; then
+            echo "::error::Could not resolve Maven coordinates"
+            exit 1
+          fi
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
           echo "artifact=$ARTIFACT" >> "$GITHUB_OUTPUT"
           echo "image=ghcr.io/firefly-oss/$ARTIFACT" >> "$GITHUB_OUTPUT"
         env:
-          PACKAGES_TOKEN: ${{ secrets.PACKAGES_TOKEN }}
+          GITHUB_TOKEN: ${{ github.token }}
 
       - name: Build dependencies
-        run: mvn -B -U -pl ${{ inputs.web-module }} -am install -Dmaven.test.skip=true -DskipOpenApiGen
+        run: mvn -B -ntp -pl ${{ inputs.web-module }} -am install -Dmaven.test.skip=true -DskipOpenApiGen
         env:
-          PACKAGES_TOKEN: ${{ secrets.PACKAGES_TOKEN }}
+          GITHUB_TOKEN: ${{ github.token }}
 
       - name: Build container image
         run: |
-          mvn -B -pl ${{ inputs.web-module }} \
+          mvn -B -ntp -pl ${{ inputs.web-module }} \
             spring-boot:build-image \
             -Pbuild-image \
             -Dmaven.test.skip=true \
             -Ddocker.image.platform=${{ inputs.image-platform }} \
             -Doci.source=https://github.com/${{ github.repository }}
         env:
-          PACKAGES_TOKEN: ${{ secrets.PACKAGES_TOKEN }}
+          GITHUB_TOKEN: ${{ github.token }}
 
       - name: Log in to GHCR
         uses: docker/login-action@v3
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
-          password: ${{ secrets.PACKAGES_TOKEN }}
+          password: ${{ github.token }}
 
       - name: Push container image
         run: |
