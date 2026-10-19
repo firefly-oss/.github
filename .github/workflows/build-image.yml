@@ -1,190 +1,29 @@
 name: Build Container Image
 
+# Microservice container images are not published. This workflow remains only
+# so existing callers exit without building or pushing to GHCR.
+
 on:
   workflow_call:
     inputs:
       java-version:
-        description: 'Java version to use'
+        description: 'Unused. Kept so existing callers stay valid.'
         required: false
         type: string
         default: '25'
       web-module:
-        description: 'Name of the -web module directory (e.g. core-banking-accounts-web)'
+        description: 'Unused. Kept so existing callers stay valid.'
         required: true
         type: string
       image-platform:
-        description: 'Target image platform'
+        description: 'Unused. Kept so existing callers stay valid.'
         required: false
         type: string
         default: 'linux/arm64'
 
 jobs:
   build-and-push:
-    runs-on: ubuntu-24.04-arm
-    permissions:
-      contents: read
-      packages: write
-    concurrency:
-      group: build-image-${{ github.repository }}-${{ github.ref }}
-      cancel-in-progress: true
+    runs-on: ubuntu-latest
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Set up JDK ${{ inputs.java-version }}
-        uses: actions/setup-java@v4
-        with:
-          java-version: ${{ inputs.java-version }}
-          distribution: temurin
-          cache: maven
-
-      # Public platform POMs. Installed locally so resolution does not depend on
-      # the org PACKAGES_TOKEN. Jafly 26.10.19+ comes from Maven Central.
-      - name: Checkout firefly-bom
-        uses: actions/checkout@v4
-        with:
-          repository: firefly-oss/firefly-bom
-          ref: main
-          path: .ci/firefly-bom
-
-      - name: Checkout firefly-parent
-        uses: actions/checkout@v4
-        with:
-          repository: firefly-oss/firefly-parent
-          ref: main
-          path: .ci/firefly-parent
-
-      - name: Configure Maven repositories
-        run: |
-          mkdir -p ~/.m2
-          cat > ~/.m2/settings.xml << 'EOF'
-          <settings xmlns="http://maven.apache.org/SETTINGS/1.0.0"
-                    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-                    xsi:schemaLocation="http://maven.apache.org/SETTINGS/1.0.0 https://maven.apache.org/xsd/settings-1.0.0.xsd">
-            <servers>
-              <server>
-                <id>github-firefly-oss</id>
-                <username>x-access-token</username>
-                <password>${env.GITHUB_TOKEN}</password>
-              </server>
-            </servers>
-            <profiles>
-              <profile>
-                <id>github-packages</id>
-                <repositories>
-                  <repository>
-                    <id>github-firefly-oss</id>
-                    <url>https://maven.pkg.github.com/firefly-oss/firefly-parent</url>
-                    <snapshots><enabled>true</enabled><updatePolicy>never</updatePolicy></snapshots>
-                    <releases><enabled>true</enabled></releases>
-                  </repository>
-                </repositories>
-              </profile>
-            </profiles>
-            <activeProfiles>
-              <activeProfile>github-packages</activeProfile>
-            </activeProfiles>
-          </settings>
-          EOF
-
-      - name: Install platform POMs
-        run: |
-          set -euo pipefail
-          mvn -B -ntp -f .ci/firefly-bom/pom.xml install -DskipTests
-          mvn -B -ntp -N -f .ci/firefly-parent/pom.xml install -DskipTests
-        env:
-          GITHUB_TOKEN: ${{ github.token }}
-
-      # This SDK package is private, so another repo's GITHUB_TOKEN cannot read it
-      # from GitHub Packages. Build it from the public source checkout instead.
-      - name: Checkout domain-common-sca
-        if: github.repository == 'firefly-oss/exp-lending' || github.repository == 'firefly-oss/exp-security'
-        uses: actions/checkout@v4
-        with:
-          repository: firefly-oss/domain-common-sca
-          ref: main
-          path: .ci/domain-common-sca
-
-      - name: Install domain-common-sca SDK
-        if: github.repository == 'firefly-oss/exp-lending' || github.repository == 'firefly-oss/exp-security'
-        run: mvn -B -ntp -f .ci/domain-common-sca/pom.xml -pl :domain-common-sca-sdk -am install -Dmaven.test.skip=true -DskipOpenApiGen
-        env:
-          GITHUB_TOKEN: ${{ github.token }}
-
-      - name: Extract image metadata
-        id: meta
-        run: |
-          set -euo pipefail
-          mvn -B -ntp help:evaluate -Dexpression=project.version -Doutput=/tmp/ff-version.txt
-          mvn -B -ntp -pl "${WEB_MODULE}" help:evaluate -Dexpression=project.artifactId -Doutput=/tmp/ff-artifact.txt
-          VERSION=$(tr -d '[:space:]' < /tmp/ff-version.txt)
-          ARTIFACT=$(tr -d '[:space:]' < /tmp/ff-artifact.txt)
-          if [ -z "$VERSION" ] || [ -z "$ARTIFACT" ]; then
-            echo "::error::Could not resolve Maven coordinates"
-            exit 1
-          fi
-          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
-          echo "artifact=$ARTIFACT" >> "$GITHUB_OUTPUT"
-          echo "image=ghcr.io/firefly-oss/$ARTIFACT" >> "$GITHUB_OUTPUT"
-        env:
-          GITHUB_TOKEN: ${{ github.token }}
-          WEB_MODULE: ${{ inputs.web-module }}
-
-      - name: Build dependencies
-        run: mvn -B -ntp -pl ${{ inputs.web-module }} -am install -Dmaven.test.skip=true -DskipOpenApiGen
-        env:
-          GITHUB_TOKEN: ${{ github.token }}
-
-      - name: Build container image
-        run: |
-          mvn -B -ntp -pl ${{ inputs.web-module }} \
-            spring-boot:build-image \
-            -Pbuild-image \
-            -Dmaven.test.skip=true \
-            -Ddocker.image.platform=${{ inputs.image-platform }} \
-            -Doci.source=https://github.com/${{ github.repository }}
-        env:
-          GITHUB_TOKEN: ${{ github.token }}
-
-      - name: Log in to GHCR
-        uses: docker/login-action@v3
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ github.token }}
-
-      - name: Push container image
-        run: |
-          push_with_retry() {
-            local image="$1"
-            local attempt
-            for attempt in 1 2 3 4 5 6 7 8; do
-              if docker push "$image"; then
-                return 0
-              fi
-              echo "push of $image failed on attempt $attempt; GHCR may be rate limiting"
-              sleep $((attempt * 20))
-            done
-            echo "::error::Could not push $image"
-            return 1
-          }
-          push_with_retry "$IMAGE:$VERSION"
-          push_with_retry "$IMAGE:latest"
-        env:
-          IMAGE: ${{ steps.meta.outputs.image }}
-          VERSION: ${{ steps.meta.outputs.version }}
-
-      # Note: GHCR auto-links the package to its source repo via the OCI label
-      # `org.opencontainers.image.source` (set by Paketo from BP_OCI_SOURCE,
-      # threaded from -Doci.source above). No explicit linkage API call needed.
-
-      - name: Summary
-        run: |
-          echo "### Container Image Published" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "| Field | Value |" >> $GITHUB_STEP_SUMMARY
-          echo "|-------|-------|" >> $GITHUB_STEP_SUMMARY
-          echo "| Image | \`${{ steps.meta.outputs.image }}\` |" >> $GITHUB_STEP_SUMMARY
-          echo "| Version | \`${{ steps.meta.outputs.version }}\` |" >> $GITHUB_STEP_SUMMARY
-          echo "| Platform | \`${{ inputs.image-platform }}\` |" >> $GITHUB_STEP_SUMMARY
-          echo "| Tags | \`${{ steps.meta.outputs.version }}\`, \`latest\` |" >> $GITHUB_STEP_SUMMARY
+      - name: Skip container image
+        run: echo "Container images are not published for firefly-oss microservices."
