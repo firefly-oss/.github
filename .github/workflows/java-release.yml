@@ -19,7 +19,7 @@ on:
         type: string
         default: ''
       destination:
-        description: 'github publishes to GitHub Packages. central signs and publishes to Maven Central.'
+        description: 'github, central, or both. both publishes GitHub Packages and then Maven Central in this same run.'
         required: false
         type: string
         default: github
@@ -113,7 +113,7 @@ jobs:
           python3 .ci/platform-tools/scripts/openplatform_release.py install-upstreams
 
       - name: Import the foundation GPG key
-        if: inputs.destination == 'central'
+        if: inputs.destination == 'central' || inputs.destination == 'both'
         run: |
           echo "$GPG_PRIVATE_KEY" | base64 --decode | gpg --batch --import
         env:
@@ -123,48 +123,62 @@ jobs:
         run: |
           set -o pipefail
           SKIP_FLAGS="-Dmaven.test.skip=true -DskipOpenApiGen"
-          if [ "${{ inputs.destination }}" = "central" ]; then
-            DEPLOY_FLAGS="-Prelease,maven-central -Dopenplatform.repository=${{ github.event.repository.name }}"
-          else
-            DEPLOY_FLAGS="-DaltDeploymentRepository=github-firefly-oss::https://maven.pkg.github.com/${{ github.repository }}"
-          fi
+          case "$DESTINATION" in
+            github|central|both) ;;
+            *)
+              echo "::error::destination must be github, central, or both"
+              exit 1
+              ;;
+          esac
 
-          if [ -n "$DEPLOY_MODULES" ]; then
-            echo "Deploying selected modules: $DEPLOY_MODULES"
-            mvn -B -ntp -N install $SKIP_FLAGS
-            mvn -B -ntp deploy $SKIP_FLAGS -pl "$DEPLOY_MODULES" $DEPLOY_FLAGS \
-              2>&1 | tee /tmp/mvn-deploy.log || {
-                if grep -Eq "status code: 409|HTTP Status: 409" /tmp/mvn-deploy.log; then
-                  echo "::warning::Artifact already exists (409)"
-                else
-                  echo "::error::Deploy failed"
-                  exit 1
-                fi
-              }
-          elif [ -n "${{ inputs.deploy-module }}" ]; then
-            echo "Deploying aggregate pom + module: ${{ inputs.deploy-module }}"
-            mvn -B -ntp install $SKIP_FLAGS -pl :${{ inputs.deploy-module }} -am
-            mvn -B -ntp deploy $SKIP_FLAGS -pl .,:${{ inputs.deploy-module }} $DEPLOY_FLAGS \
-              2>&1 | tee /tmp/mvn-deploy.log || {
-                if grep -Eq "status code: 409|HTTP Status: 409" /tmp/mvn-deploy.log; then
-                  echo "::warning::Artifact already exists (409)"
-                else
-                  echo "::error::Deploy failed"
-                  exit 1
-                fi
-              }
-          else
-            echo "Deploying entire project"
-            mvn -B -ntp deploy $SKIP_FLAGS $DEPLOY_FLAGS \
-              2>&1 | tee /tmp/mvn-deploy.log || {
-                if grep -Eq "status code: 409|HTTP Status: 409" /tmp/mvn-deploy.log && \
-                   [ -z "$(grep -i 'Failed to deploy' /tmp/mvn-deploy.log | grep -v '409' || true)" ]; then
-                  echo "::warning::Artifact already exists (409)"
-                else
-                  echo "::error::Deploy failed"
-                  exit 1
-                fi
-              }
+          publish() {
+            local deploy_flags="$1"
+            local label="$2"
+            echo "Publishing to ${label}"
+            if [ -n "$DEPLOY_MODULES" ]; then
+              echo "Deploying selected modules: $DEPLOY_MODULES"
+              mvn -B -ntp -N install $SKIP_FLAGS
+              mvn -B -ntp deploy $SKIP_FLAGS -pl "$DEPLOY_MODULES" $deploy_flags \
+                2>&1 | tee /tmp/mvn-deploy.log || {
+                  if grep -Eq "status code: 409|HTTP Status: 409" /tmp/mvn-deploy.log; then
+                    echo "::warning::Artifact already exists (409)"
+                  else
+                    echo "::error::Deploy to ${label} failed"
+                    exit 1
+                  fi
+                }
+            elif [ -n "$DEPLOY_MODULE" ]; then
+              echo "Deploying aggregate pom + module: $DEPLOY_MODULE"
+              mvn -B -ntp install $SKIP_FLAGS -pl ":$DEPLOY_MODULE" -am
+              mvn -B -ntp deploy $SKIP_FLAGS -pl ".,:$DEPLOY_MODULE" $deploy_flags \
+                2>&1 | tee /tmp/mvn-deploy.log || {
+                  if grep -Eq "status code: 409|HTTP Status: 409" /tmp/mvn-deploy.log; then
+                    echo "::warning::Artifact already exists (409)"
+                  else
+                    echo "::error::Deploy to ${label} failed"
+                    exit 1
+                  fi
+                }
+            else
+              echo "Deploying entire project"
+              mvn -B -ntp deploy $SKIP_FLAGS $deploy_flags \
+                2>&1 | tee /tmp/mvn-deploy.log || {
+                  if grep -Eq "status code: 409|HTTP Status: 409" /tmp/mvn-deploy.log && \
+                     [ -z "$(grep -i 'Failed to deploy' /tmp/mvn-deploy.log | grep -v '409' || true)" ]; then
+                    echo "::warning::Artifact already exists (409)"
+                  else
+                    echo "::error::Deploy to ${label} failed"
+                    exit 1
+                  fi
+                }
+            fi
+          }
+
+          if [ "$DESTINATION" = "github" ] || [ "$DESTINATION" = "both" ]; then
+            publish "-DaltDeploymentRepository=github-firefly-oss::https://maven.pkg.github.com/${{ github.repository }}" "GitHub Packages"
+          fi
+          if [ "$DESTINATION" = "central" ] || [ "$DESTINATION" = "both" ]; then
+            publish "-Prelease,maven-central -Dopenplatform.repository=${{ github.event.repository.name }}" "Maven Central"
           fi
         env:
           GITHUB_TOKEN: ${{ github.token }}
@@ -172,6 +186,8 @@ jobs:
           SONATYPE_PASSWORD: ${{ secrets.SONATYPE_PASSWORD }}
           MAVEN_GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
           DEPLOY_MODULES: ${{ inputs.deploy-modules }}
+          DEPLOY_MODULE: ${{ inputs.deploy-module }}
+          DESTINATION: ${{ inputs.destination }}
 
   post-release:
     needs: [github-packages]

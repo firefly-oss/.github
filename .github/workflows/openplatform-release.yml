@@ -1,8 +1,9 @@
 name: OpenPlatform release
 
 # Publishes one OpenPlatform version in dependency order.
-# Maven Central stays off: this workflow only creates the v* tag that
-# release.yml already publishes to GitHub Packages.
+# both creates the v* tag. That tag runs release.yml once, which publishes
+# GitHub Packages and then Maven Central.
+# central retries Maven Central only, in the same waves, and does not create tags.
 #
 # Before running it, every repository's main must already be the requested
 # version. The job refuses to tag anything otherwise.
@@ -19,8 +20,16 @@ on:
         description: 'Train version already committed on main, for example 26.10.4'
         required: true
         type: string
+      publish:
+        description: 'both publishes GitHub Packages and Maven Central. central retries Central only.'
+        required: false
+        type: choice
+        options:
+          - both
+          - central
+        default: both
       dry-run:
-        description: 'Check versions and print the waves without tagging'
+        description: 'Check versions and print the waves without tagging or dispatching'
         required: false
         type: boolean
         default: false
@@ -53,10 +62,11 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.ORG_DISPATCH_TOKEN }}
           RELEASE_VERSION: ${{ inputs.version }}
+          PUBLISH: ${{ inputs.publish }}
           DRY_RUN: ${{ inputs.dry-run }}
         run: |
           set -euo pipefail
-          args=(release --version "$RELEASE_VERSION")
+          args=(release --version "$RELEASE_VERSION" --publish "$PUBLISH")
           if [ "$DRY_RUN" = "true" ]; then
             args+=(--dry-run)
           fi

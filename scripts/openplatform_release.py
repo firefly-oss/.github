@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 """Release the OpenPlatform train in dependency order.
 
-The reusable java-release workflow publishes one repository. This script is
-the train: it reads every repository POM, groups repositories that do not
-depend on each other, and only tags the next group after the current group
-has published to GitHub Packages.
+The reusable java-release workflow publishes one repository to GitHub
+Packages and Maven Central in a single run. This script is the train: it
+reads every repository POM, groups repositories that do not depend on each
+other, and only starts the next group after the current group has published.
 
   python3 scripts/openplatform_release.py plan
   python3 scripts/openplatform_release.py release --version 26.10.4 --dry-run
@@ -345,23 +345,31 @@ def create_annotated_tag(repo: str, tag: str, version: str, sha: str) -> None:
     )
 
 
-def dispatch_release(repo: str, tag: str) -> None:
+def dispatch_workflow(repo: str, workflow: str, ref: str) -> None:
     gh(
         [
             "api",
             "--method",
             "POST",
-            f"repos/{ORG}/{repo}/actions/workflows/release.yml/dispatches",
+            f"repos/{ORG}/{repo}/actions/workflows/{workflow}/dispatches",
             "-f",
-            f"ref=refs/tags/{tag}",
+            f"ref={ref}",
         ]
     )
 
 
-def latest_run(repo: str, tag: str, not_before: datetime | None) -> dict | None:
-    data = gh_json(f"repos/{ORG}/{repo}/actions/workflows/release.yml/runs?per_page=20&branch={tag}")
+def latest_run(
+    repo: str,
+    workflow: str,
+    not_before: datetime | None,
+    branch: str | None = None,
+    sha: str | None = None,
+) -> dict | None:
+    data = gh_json(f"repos/{ORG}/{repo}/actions/workflows/{workflow}/runs?per_page=20")
     for run in data.get("workflow_runs", []):
-        if run.get("head_branch") != tag:
+        if branch is not None and run.get("head_branch") != branch:
+            continue
+        if sha is not None and run.get("head_sha") != sha:
             continue
         if not_before is not None and parse_time(run["created_at"]) < not_before:
             continue
@@ -369,14 +377,20 @@ def latest_run(repo: str, tag: str, not_before: datetime | None) -> dict | None:
     return None
 
 
-def wait_for(tag: str, pending: dict[str, datetime]) -> None:
+def wait_for(workflow: str, pending: dict[str, datetime], branch: str | None = None, shas: dict[str, str] | None = None) -> None:
     deadline = time.time() + WAVE_TIMEOUT_SECONDS
     while pending:
         if time.time() > deadline:
             raise SystemExit(f"timed out waiting for {', '.join(sorted(pending))}")
         still: dict[str, datetime] = {}
         for repo, not_before in pending.items():
-            run = latest_run(repo, tag, not_before)
+            run = latest_run(
+                repo,
+                workflow,
+                not_before,
+                branch=branch,
+                sha=None if shas is None else shas.get(repo),
+            )
             if run is None or run.get("status") != "completed":
                 still[repo] = not_before
                 continue
@@ -391,11 +405,12 @@ def wait_for(tag: str, pending: dict[str, datetime]) -> None:
 
 
 def release_wave(wave: list[str], version: str, dry_run: bool) -> None:
+    """Tag each repository. release.yml on that tag publishes GitHub Packages and Maven Central."""
     tag = f"v{version}"
     waiting: dict[str, datetime] = {}
     for repo in wave:
         if tag_exists(repo, tag):
-            run = latest_run(repo, tag, None)
+            run = latest_run(repo, "release.yml", None, branch=tag)
             if run and run.get("status") == "completed" and run.get("conclusion") == "success":
                 print(f"already published {repo}", flush=True)
                 continue
@@ -405,7 +420,7 @@ def release_wave(wave: list[str], version: str, dry_run: bool) -> None:
                 continue
             print(f"retry {repo}", flush=True)
             if not dry_run:
-                dispatch_release(repo, tag)
+                dispatch_workflow(repo, "release.yml", f"refs/tags/{tag}")
                 waiting[repo] = parse_time(run["created_at"]) + timedelta(seconds=1) if run else datetime.min.replace(tzinfo=timezone.utc)
             continue
         sha = main_sha(repo)
@@ -415,7 +430,35 @@ def release_wave(wave: list[str], version: str, dry_run: bool) -> None:
         create_annotated_tag(repo, tag, version, sha)
         waiting[repo] = datetime.min.replace(tzinfo=timezone.utc)
     if waiting and not dry_run:
-        wait_for(tag, waiting)
+        wait_for("release.yml", waiting, branch=tag)
+
+
+def central_wave(wave: list[str], version: str, dry_run: bool) -> None:
+    """Retry Maven Central for a version that already has a tag. Does not create tags."""
+    tag = f"v{version}"
+    waiting: dict[str, datetime] = {}
+    shas: dict[str, str] = {}
+    for repo in wave:
+        if not tag_exists(repo, tag):
+            raise SystemExit(f"{repo} has no {tag}. Publish the train with publish=both first.")
+        sha = main_sha(repo)
+        shas[repo] = sha
+        run = latest_run(repo, "maven-central.yml", None, sha=sha)
+        if run and run.get("status") == "completed" and run.get("conclusion") == "success":
+            print(f"already on Central {repo}", flush=True)
+            continue
+        if run and run.get("status") != "completed":
+            print(f"already running {repo}", flush=True)
+            waiting[repo] = parse_time(run["created_at"])
+            continue
+        print(f"central {repo}", flush=True)
+        if dry_run:
+            continue
+        started = parse_time(run["created_at"]) + timedelta(seconds=1) if run else datetime.min.replace(tzinfo=timezone.utc)
+        dispatch_workflow(repo, "maven-central.yml", "main")
+        waiting[repo] = started
+    if waiting and not dry_run:
+        wait_for("maven-central.yml", waiting, shas=shas)
 
 
 def cmd_release(args: argparse.Namespace) -> None:
@@ -425,12 +468,17 @@ def cmd_release(args: argparse.Namespace) -> None:
     verify_version(repositories, args.version)
     waves = build_waves(repositories)
     print_waves(waves)
+    if args.publish not in {"both", "central"}:
+        raise SystemExit("publish must be both or central")
     for index, wave in enumerate(waves):
-        print(f"=== wave {index} ===", flush=True)
-        release_wave(wave, args.version, args.dry_run)
+        print(f"=== wave {index} ({args.publish}) ===", flush=True)
+        if args.publish == "central":
+            central_wave(wave, args.version, args.dry_run)
+        else:
+            release_wave(wave, args.version, args.dry_run)
         print(f"=== wave {index} complete ===", flush=True)
     if args.dry_run:
-        print("dry run: no tags were created")
+        print("dry run: no tags were created and no workflows were dispatched")
 
 
 def main() -> None:
@@ -440,6 +488,7 @@ def main() -> None:
     commands.add_parser("install-upstreams", help="Install sibling reactors from source")
     release = commands.add_parser("release", help="Tag and publish each wave")
     release.add_argument("--version", required=True)
+    release.add_argument("--publish", choices=("both", "central"), default="both")
     release.add_argument("--dry-run", action="store_true")
     args = parser.parse_args()
     if args.command == "plan":
