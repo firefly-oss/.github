@@ -9,8 +9,8 @@ name: OpenPlatform release
 #
 # Requires the organization secret ORG_DISPATCH_TOKEN: a fine-grained
 # personal access token for fireflysoftwaresolutions with Contents and
-# Actions read/write on all repositories. GITHUB_TOKEN cannot tag or
-# dispatch workflows in other repositories.
+# Actions read/write on all repositories, including private ones.
+# GITHUB_TOKEN cannot tag or read other repositories.
 
 on:
   workflow_dispatch:
@@ -41,18 +41,17 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Require the dispatch token
-        if: inputs.dry-run != true
         env:
           ORG_DISPATCH_TOKEN: ${{ secrets.ORG_DISPATCH_TOKEN }}
         run: |
           if [ -z "$ORG_DISPATCH_TOKEN" ]; then
-            echo "::error::Set the fireflysoftwaresolutions organization secret ORG_DISPATCH_TOKEN. Use a fine-grained PAT with Contents and Actions read/write on all repositories."
+            echo "::error::Set the fireflysoftwaresolutions organization secret ORG_DISPATCH_TOKEN. Use a fine-grained PAT with Contents and Actions read/write on all repositories, including the private ones."
             exit 1
           fi
 
       - name: Publish the train one wave at a time
         env:
-          GH_TOKEN: ${{ inputs.dry-run && github.token || secrets.ORG_DISPATCH_TOKEN }}
+          GH_TOKEN: ${{ secrets.ORG_DISPATCH_TOKEN }}
           RELEASE_VERSION: ${{ inputs.version }}
           DRY_RUN: ${{ inputs.dry-run }}
         run: |

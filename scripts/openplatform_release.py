@@ -137,25 +137,20 @@ def gh_json(path: str):
     return json.loads(result.stdout)
 
 
-def release_repos_via_api() -> list[str]:
-    names = gh(
-        [
-            "api",
-            "--paginate",
-            f"orgs/{ORG}/repos",
-            "--jq",
-            '.[] | select(.archived == false and .disabled == false) | .name',
-        ]
-    ).stdout.split()
-    selected = []
-    for name in names:
-        probe = gh(
-            ["api", f"repos/{ORG}/{name}/contents/.github/workflows/release.yml?ref=main"],
-            check=False,
-        )
-        if probe.returncode == 0:
-            selected.append(name)
-    return sorted(selected)
+def manifest_names() -> list[str]:
+    path = Path(__file__).resolve().parent / "release-repos.txt"
+    if not path.is_file():
+        raise SystemExit(f"missing {path}")
+    names = [
+        line.strip()
+        for line in path.read_text(encoding="utf-8").splitlines()
+        if line.strip() and not line.startswith("#")
+    ]
+    if names != sorted(names):
+        raise SystemExit("release-repos.txt must be sorted")
+    if len(names) != len(set(names)):
+        raise SystemExit("release-repos.txt contains duplicate names")
+    return names
 
 
 def poms_via_api(repo: str) -> list[str]:
@@ -178,10 +173,25 @@ def poms_via_api(repo: str) -> list[str]:
 
 
 def load_repositories() -> dict[str, list[str]]:
+    names = manifest_names()
     root = local_root()
     if root is not None:
-        return {name: poms_on_disk(root / name) for name in release_repos_on_disk(root)}
-    return {name: poms_via_api(name) for name in release_repos_via_api()}
+        on_disk = release_repos_on_disk(root)
+        if on_disk != names:
+            missing = sorted(set(on_disk) - set(names))
+            extra = sorted(set(names) - set(on_disk))
+            raise SystemExit(
+                "scripts/release-repos.txt does not match the local release workflows.\n"
+                f"missing: {', '.join(missing) or '-'}\n"
+                f"extra: {', '.join(extra) or '-'}"
+            )
+    loaded = {}
+    for name in names:
+        if root is not None and (root / name / "pom.xml").is_file():
+            loaded[name] = poms_on_disk(root / name)
+        else:
+            loaded[name] = poms_via_api(name)
+    return loaded
 
 
 def build_waves(repositories: dict[str, list[str]]) -> list[list[str]]:
