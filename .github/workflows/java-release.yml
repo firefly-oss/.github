@@ -13,6 +13,11 @@ on:
         required: false
         type: string
         default: ''
+      destination:
+        description: 'github publishes to GitHub Packages. central signs and publishes to Maven Central.'
+        required: false
+        type: string
+        default: github
 
 jobs:
   github-packages:
@@ -61,6 +66,11 @@ jobs:
                 <id>github-firefly-oss</id>
                 <username>x-access-token</username>
                 <password>${env.GITHUB_TOKEN}</password>
+              </server>
+              <server>
+                <id>central</id>
+                <username>${env.SONATYPE_USERNAME}</username>
+                <password>${env.SONATYPE_PASSWORD}</password>
               </server>
             </servers>
           </settings>
@@ -114,7 +124,7 @@ jobs:
                       continue
                   text = pom.read_text(encoding="utf-8", errors="replace")
                   text = re.sub(r"<dependencyManagement>.*?</dependencyManagement>", "", text, flags=re.S)
-                  for art in re.findall(r"<groupId>\s*com\.firefly\s*</groupId>\s*<artifactId>\s*([^<\s]+)\s*</artifactId>", text):
+                  for art in re.findall(r"<groupId>\s*io\.fireflysoftware\s*</groupId>\s*<artifactId>\s*([^<\s]+)\s*</artifactId>", text):
                       if art in {"firefly-parent", "firefly-bom"}:
                           continue
                       if repo_for(art) == repo:
@@ -165,23 +175,27 @@ jobs:
               print("::endgroup::", flush=True)
           PY
 
+      - name: Import the foundation GPG key
+        if: inputs.destination == 'central'
+        run: |
+          echo "$GPG_PRIVATE_KEY" | base64 --decode | gpg --batch --import
+        env:
+          GPG_PRIVATE_KEY: ${{ secrets.GPG_PRIVATE_KEY }}
+
       - name: Deploy
         run: |
           set -o pipefail
-          DEPLOY_REPO="-DaltDeploymentRepository=github-firefly-oss::https://maven.pkg.github.com/${{ github.repository }}"
           SKIP_FLAGS="-Dmaven.test.skip=true -DskipOpenApiGen"
+          if [ "${{ inputs.destination }}" = "central" ]; then
+            DEPLOY_FLAGS="-Prelease,maven-central -Dopenplatform.repository=${{ github.event.repository.name }}"
+          else
+            DEPLOY_FLAGS="-DaltDeploymentRepository=github-firefly-oss::https://maven.pkg.github.com/${{ github.repository }}"
+          fi
 
           if [ -n "${{ inputs.deploy-module }}" ]; then
             echo "Deploying aggregate pom + module: ${{ inputs.deploy-module }}"
-
-            # Install dependencies first (also-make pulls in interfaces/models/core)
             mvn -B -ntp install $SKIP_FLAGS -pl :${{ inputs.deploy-module }} -am
-
-            # Deploy aggregate root pom (.) + the named module only.
-            # The aggregate pom is required because the named module's pom
-            # inherits from it; consumers pulling the SDK need to resolve
-            # its parent. -pl .,:X selects the root reactor + module X.
-            mvn -B -ntp deploy $SKIP_FLAGS -pl .,:${{ inputs.deploy-module }} $DEPLOY_REPO \
+            mvn -B -ntp deploy $SKIP_FLAGS -pl .,:${{ inputs.deploy-module }} $DEPLOY_FLAGS \
               2>&1 | tee /tmp/mvn-deploy.log || {
                 if grep -Eq "status code: 409|HTTP Status: 409" /tmp/mvn-deploy.log; then
                   echo "::warning::Artifact already exists (409)"
@@ -192,7 +206,7 @@ jobs:
               }
           else
             echo "Deploying entire project"
-            mvn -B -ntp deploy $SKIP_FLAGS $DEPLOY_REPO \
+            mvn -B -ntp deploy $SKIP_FLAGS $DEPLOY_FLAGS \
               2>&1 | tee /tmp/mvn-deploy.log || {
                 if grep -Eq "status code: 409|HTTP Status: 409" /tmp/mvn-deploy.log && \
                    [ -z "$(grep -i 'Failed to deploy' /tmp/mvn-deploy.log | grep -v '409' || true)" ]; then
@@ -205,6 +219,9 @@ jobs:
           fi
         env:
           GITHUB_TOKEN: ${{ github.token }}
+          SONATYPE_USERNAME: ${{ secrets.SONATYPE_USERNAME }}
+          SONATYPE_PASSWORD: ${{ secrets.SONATYPE_PASSWORD }}
+          MAVEN_GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
 
   post-release:
     needs: [github-packages]
