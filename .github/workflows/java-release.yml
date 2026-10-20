@@ -32,7 +32,7 @@ jobs:
           cache: maven
 
       # Public platform POMs. Installed locally so a 401 from GitHub Packages
-      # cannot abort resolution. Jafly 26.10.19+ is on Maven Central.
+      # cannot abort resolution. Jafly 26.10.20+ is on Maven Central.
       - name: Checkout firefly-bom
         if: github.repository != 'firefly-oss/firefly-bom'
         uses: actions/checkout@v4
@@ -93,21 +93,86 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ github.token }}
 
-      # This SDK package is private, so another repo's GITHUB_TOKEN cannot read it
-      # from GitHub Packages. Build it from the public source checkout instead.
-      - name: Checkout domain-common-sca
-        if: github.repository == 'firefly-oss/exp-lending' || github.repository == 'firefly-oss/exp-security'
-        uses: actions/checkout@v4
-        with:
-          repository: firefly-oss/domain-common-sca
-          ref: main
-          path: .ci/domain-common-sca
-
-      - name: Install domain-common-sca SDK
-        if: github.repository == 'firefly-oss/exp-lending' || github.repository == 'firefly-oss/exp-security'
-        run: mvn -B -ntp -f .ci/domain-common-sca/pom.xml -pl :domain-common-sca-sdk -am install -Dmaven.test.skip=true -DskipOpenApiGen
+      # Sibling SDKs are published into each repository's own GitHub Packages
+      # namespace. GITHUB_TOKEN cannot read those packages from another
+      # repository, so release builds install the upstream reactors from
+      # source, leaves first: libraries, then core, then domain, then experience.
+      - name: Install upstream Firefly modules from source
+        if: github.repository != 'firefly-oss/firefly-bom' && github.repository != 'firefly-oss/firefly-parent'
         env:
-          GITHUB_TOKEN: ${{ github.token }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          python3 << 'PY'
+          import os, re, subprocess
+          from pathlib import Path
+
+          current = os.environ["GITHUB_REPOSITORY"].split("/", 1)[1]
+          suffixes = ("-sdk", "-interfaces", "-models", "-infra", "-core", "-web")
+
+          def deps_of(root: Path, repo: str) -> set[str]:
+              found = set()
+              for pom in root.rglob("pom.xml"):
+                  if "target" in pom.parts or ".ci" in pom.parts:
+                      continue
+                  text = pom.read_text(encoding="utf-8", errors="replace")
+                  text = re.sub(r"<dependencyManagement>.*?</dependencyManagement>", "", text, flags=re.S)
+                  for art in re.findall(r"<groupId>\s*com\.firefly\s*</groupId>\s*<artifactId>\s*([^<\s]+)\s*</artifactId>", text):
+                      if art in {"firefly-parent", "firefly-bom"}:
+                          continue
+                      if art == repo or art.startswith(repo + "-"):
+                          continue
+                      found.add(art)
+              return found
+
+          def repo_for(art: str) -> str:
+              for suffix in suffixes:
+                  if art.endswith(suffix):
+                      return art[: -len(suffix)]
+              return art
+
+          queue = sorted(deps_of(Path("."), current))
+          seen = set()
+          graph = {}
+          while queue:
+              art = queue.pop(0)
+              repo = repo_for(art)
+              if repo in seen or repo == current:
+                  continue
+              seen.add(repo)
+              dest = Path(".ci/upstream") / repo
+              print(f"::group::checkout {repo}", flush=True)
+              subprocess.check_call([
+                  "gh", "repo", "clone", f"firefly-oss/{repo}", str(dest),
+                  "--", "--depth", "1", "--branch", "main",
+              ])
+              print("::endgroup::", flush=True)
+              upstream = deps_of(dest, repo)
+              graph[repo] = {repo_for(item) for item in upstream}
+              graph[repo].discard(current)
+              for item in sorted(upstream):
+                  queue.append(item)
+
+          pending = {repo: {dep for dep in deps if dep in seen} for repo, deps in graph.items()}
+          order = []
+          while pending:
+              ready = sorted(repo for repo, deps in pending.items() if not deps)
+              if not ready:
+                  raise SystemExit(f"dependency cycle among {sorted(pending)}")
+              for repo in ready:
+                  order.append(repo)
+                  del pending[repo]
+              for deps in pending.values():
+                  deps.difference_update(ready)
+
+          for repo in order:
+              print(f"::group::install {repo}", flush=True)
+              subprocess.check_call([
+                  "mvn", "-B", "-ntp", "-f", f".ci/upstream/{repo}/pom.xml",
+                  "install", "-Dmaven.test.skip=true", "-DskipOpenApiGen",
+              ])
+              print("::endgroup::", flush=True)
+          PY
 
       - name: Deploy
         run: |
