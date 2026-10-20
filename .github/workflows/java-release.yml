@@ -13,6 +13,11 @@ on:
         required: false
         type: string
         default: ''
+      deploy-modules:
+        description: 'Comma-separated Maven -pl list. Skips the aggregator. Use when the aggregator POM is already on Central.'
+        required: false
+        type: string
+        default: ''
       destination:
         description: 'github publishes to GitHub Packages. central signs and publishes to Maven Central.'
         required: false
@@ -124,7 +129,19 @@ jobs:
             DEPLOY_FLAGS="-DaltDeploymentRepository=github-firefly-oss::https://maven.pkg.github.com/${{ github.repository }}"
           fi
 
-          if [ -n "${{ inputs.deploy-module }}" ]; then
+          if [ -n "$DEPLOY_MODULES" ]; then
+            echo "Deploying selected modules: $DEPLOY_MODULES"
+            mvn -B -ntp -N install $SKIP_FLAGS
+            mvn -B -ntp deploy $SKIP_FLAGS -pl "$DEPLOY_MODULES" $DEPLOY_FLAGS \
+              2>&1 | tee /tmp/mvn-deploy.log || {
+                if grep -Eq "status code: 409|HTTP Status: 409" /tmp/mvn-deploy.log; then
+                  echo "::warning::Artifact already exists (409)"
+                else
+                  echo "::error::Deploy failed"
+                  exit 1
+                fi
+              }
+          elif [ -n "${{ inputs.deploy-module }}" ]; then
             echo "Deploying aggregate pom + module: ${{ inputs.deploy-module }}"
             mvn -B -ntp install $SKIP_FLAGS -pl :${{ inputs.deploy-module }} -am
             mvn -B -ntp deploy $SKIP_FLAGS -pl .,:${{ inputs.deploy-module }} $DEPLOY_FLAGS \
@@ -154,6 +171,7 @@ jobs:
           SONATYPE_USERNAME: ${{ secrets.SONATYPE_USERNAME }}
           SONATYPE_PASSWORD: ${{ secrets.SONATYPE_PASSWORD }}
           MAVEN_GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
+          DEPLOY_MODULES: ${{ inputs.deploy-modules }}
 
   post-release:
     needs: [github-packages]
