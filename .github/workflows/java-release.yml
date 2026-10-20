@@ -26,6 +26,12 @@ jobs:
       group: release-${{ github.repository }}-${{ github.ref }}
       cancel-in-progress: false
     steps:
+      - name: Maven Central publishing is paused
+        if: inputs.destination == 'central'
+        run: |
+          echo "::error::Maven Central publishing is paused until the io.fireflysoftware namespace is verified. This release publishes to GitHub Packages only."
+          exit 1
+
       - name: Checkout
         uses: actions/checkout@v4
 
