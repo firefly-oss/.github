@@ -161,7 +161,30 @@ jobs:
       - name: Extract version
         id: version
         run: |
-          VERSION=$(grep -m1 '<version>' pom.xml | sed 's/.*<version>//' | sed 's/<\/version>.*//' | xargs)
+          VERSION=$(awk '
+            /<parent>/ {inside=1}
+            /<\/parent>/ {inside=0; next}
+            inside {next}
+            /<version>/ {
+              gsub(/.*<version>/, "")
+              gsub(/<\/version>.*/, "")
+              gsub(/^[ \t]+|[ \t]+$/, "")
+              if ($0 !~ /^\$\{/) { print; exit }
+            }
+          ' pom.xml)
+          if [ -z "$VERSION" ]; then
+            VERSION=$(awk '
+              /<parent>/,/<\/parent>/ {
+                if (/<version>/) {
+                  gsub(/.*<version>/, "")
+                  gsub(/<\/version>.*/, "")
+                  gsub(/^[ \t]+|[ \t]+$/, "")
+                  print
+                  exit
+                }
+              }
+            ' pom.xml)
+          fi
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
 
       - name: Create or update GitHub Release
