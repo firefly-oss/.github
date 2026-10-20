@@ -112,6 +112,7 @@ jobs:
           # Maven artifact id differs from the GitHub repository name.
           aliases = {
               "core-lending-mortgages": "core-lending-mortgage",
+              "domain-core-security-center-session": "domain-core-security-center",
           }
 
           def repo_for(art: str) -> str:
