@@ -1,0 +1,64 @@
+name: OpenPlatform release
+
+# Publishes one OpenPlatform version in dependency order.
+# Maven Central stays off: this workflow only creates the v* tag that
+# release.yml already publishes to GitHub Packages.
+#
+# Before running it, every repository's main must already be the requested
+# version. The job refuses to tag anything otherwise.
+#
+# Requires the organization secret ORG_DISPATCH_TOKEN: a fine-grained
+# personal access token for fireflysoftwaresolutions with Contents and
+# Actions read/write on all repositories. GITHUB_TOKEN cannot tag or
+# dispatch workflows in other repositories.
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Train version already committed on main, for example 26.10.4'
+        required: true
+        type: string
+      dry-run:
+        description: 'Check versions and print the waves without tagging'
+        required: false
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: openplatform-release
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    timeout-minutes: 360
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Require the dispatch token
+        if: inputs.dry-run != true
+        env:
+          ORG_DISPATCH_TOKEN: ${{ secrets.ORG_DISPATCH_TOKEN }}
+        run: |
+          if [ -z "$ORG_DISPATCH_TOKEN" ]; then
+            echo "::error::Set the fireflysoftwaresolutions organization secret ORG_DISPATCH_TOKEN. Use a fine-grained PAT with Contents and Actions read/write on all repositories."
+            exit 1
+          fi
+
+      - name: Publish the train one wave at a time
+        env:
+          GH_TOKEN: ${{ inputs.dry-run && github.token || secrets.ORG_DISPATCH_TOKEN }}
+          RELEASE_VERSION: ${{ inputs.version }}
+          DRY_RUN: ${{ inputs.dry-run }}
+        run: |
+          set -euo pipefail
+          args=(release --version "$RELEASE_VERSION")
+          if [ "$DRY_RUN" = "true" ]; then
+            args+=(--dry-run)
+          fi
+          python3 scripts/openplatform_release.py "${args[@]}"
