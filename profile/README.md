@@ -28,7 +28,7 @@ Firefly OpenPlatform combines business modules with your own services and existi
 
 *Conceptual composition. The service design defines the modules, integrations, and responsibilities for each implementation.*
 
-The public modules cover customers, products, agreements, accounts, payments, lending, and shared services. Insurance implementations connect to the insurer's rating, underwriting, policy, and claims systems through adapters. Native insurance capabilities are being developed; the [platform overview](https://fireflysoftware.io/openplatform/#insurance-development) explains the current boundary.
+The public modules cover customers, products, agreements, accounts, payments, lending, insurance, and shared services. Insurance cores record policies, underwriting, claims, and financial flows. Domain and experience services for insurance are not published yet. The [platform overview](https://fireflysoftware.io/openplatform/#insurance-development) explains that boundary.
 
 ## Explore the public modules
 
