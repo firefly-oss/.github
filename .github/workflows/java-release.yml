@@ -93,6 +93,18 @@ jobs:
 
           current = os.environ["GITHUB_REPOSITORY"].split("/", 1)[1]
           suffixes = ("-sdk", "-interfaces", "-models", "-infra", "-core", "-web")
+          # Maven artifact id differs from the GitHub repository name.
+          aliases = {
+              "core-lending-mortgages": "core-lending-mortgage",
+          }
+
+          def repo_for(art: str) -> str:
+              base = art
+              for suffix in suffixes:
+                  if art.endswith(suffix) and len(art) > len(suffix):
+                      base = art[: -len(suffix)]
+                      break
+              return aliases.get(base, base)
 
           def deps_of(root: Path, repo: str) -> set[str]:
               found = set()
@@ -105,16 +117,10 @@ jobs:
                   for art in re.findall(r"<groupId>\s*com\.firefly\s*</groupId>\s*<artifactId>\s*([^<\s]+)\s*</artifactId>", text):
                       if art in {"firefly-parent", "firefly-bom"}:
                           continue
-                      if art == repo or art.startswith(repo + "-"):
+                      if repo_for(art) == repo:
                           continue
                       found.add(art)
               return found
-
-          def repo_for(art: str) -> str:
-              for suffix in suffixes:
-                  if art.endswith(suffix):
-                      return art[: -len(suffix)]
-              return art
 
           queue = sorted(deps_of(Path("."), current))
           seen = set()
