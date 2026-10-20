@@ -63,22 +63,6 @@ jobs:
                 <password>${env.GITHUB_TOKEN}</password>
               </server>
             </servers>
-            <profiles>
-              <profile>
-                <id>github-packages</id>
-                <repositories>
-                  <repository>
-                    <id>github-firefly-oss</id>
-                    <url>https://maven.pkg.github.com/firefly-oss/firefly-parent</url>
-                    <snapshots><enabled>true</enabled><updatePolicy>never</updatePolicy></snapshots>
-                    <releases><enabled>true</enabled></releases>
-                  </repository>
-                </repositories>
-              </profile>
-            </profiles>
-            <activeProfiles>
-              <activeProfile>github-packages</activeProfile>
-            </activeProfiles>
           </settings>
           EOF
 
@@ -193,7 +177,7 @@ jobs:
             # its parent. -pl .,:X selects the root reactor + module X.
             mvn -B -ntp deploy $SKIP_FLAGS -pl .,:${{ inputs.deploy-module }} $DEPLOY_REPO \
               2>&1 | tee /tmp/mvn-deploy.log || {
-                if grep -q "status code: 409" /tmp/mvn-deploy.log; then
+                if grep -Eq "status code: 409|HTTP Status: 409" /tmp/mvn-deploy.log; then
                   echo "::warning::Artifact already exists (409)"
                 else
                   echo "::error::Deploy failed"
@@ -204,7 +188,7 @@ jobs:
             echo "Deploying entire project"
             mvn -B -ntp deploy $SKIP_FLAGS $DEPLOY_REPO \
               2>&1 | tee /tmp/mvn-deploy.log || {
-                if grep -q "status code: 409" /tmp/mvn-deploy.log && \
+                if grep -Eq "status code: 409|HTTP Status: 409" /tmp/mvn-deploy.log && \
                    [ -z "$(grep -i 'Failed to deploy' /tmp/mvn-deploy.log | grep -v '409' || true)" ]; then
                   echo "::warning::Artifact already exists (409)"
                 else
