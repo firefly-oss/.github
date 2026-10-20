@@ -113,7 +113,8 @@ jobs:
           def deps_of(root: Path, repo: str) -> set[str]:
               found = set()
               for pom in root.rglob("pom.xml"):
-                  if "target" in pom.parts or ".ci" in pom.parts:
+                  rel = pom.relative_to(root)
+                  if "target" in rel.parts or ".ci" in rel.parts:
                       continue
                   text = pom.read_text(encoding="utf-8", errors="replace")
                   text = re.sub(r"<dependencyManagement>.*?</dependencyManagement>", "", text, flags=re.S)
