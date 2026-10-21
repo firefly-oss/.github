@@ -79,6 +79,8 @@ exp-accounts
 exp-cards
 exp-channel-management
 exp-distributor
+exp-finance-terminal
+exp-insurance-terminal
 exp-lending
 exp-notifications
 exp-onboarding
