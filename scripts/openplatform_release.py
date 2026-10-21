@@ -32,6 +32,7 @@ ORG = "fireflysoftwaresolutions"
 SKIP_ARTIFACTS = {"firefly-parent", "firefly-bom"}
 SUFFIXES = ("-sdk", "-interfaces", "-models", "-infra", "-core", "-web")
 ALIASES = {
+    "core-common-document-mgmt-generation": "core-common-document-mgmt",
     "core-lending-mortgages": "core-lending-mortgage",
     "domain-core-security-center-session": "domain-core-security-center",
 }
