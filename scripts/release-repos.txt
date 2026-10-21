@@ -74,6 +74,7 @@ domain-lending-personal-loans
 domain-lending-provisioning-risk
 domain-lending-regulatory-compliance
 domain-lending-supply-chain-finance
+domain-payments
 domain-product-catalog
 domain-product-pricing
 exp-accounts
@@ -85,6 +86,7 @@ exp-insurance-terminal
 exp-lending
 exp-notifications
 exp-onboarding
+exp-payments
 exp-profile
 exp-security
 firefly-bom
