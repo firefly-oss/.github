@@ -63,10 +63,16 @@ domain-insurance-reinsurance
 domain-insurance-reserving
 domain-insurance-underwriting
 domain-lending-asset-finance
+domain-lending-collateral-management
 domain-lending-credit-scoring
+domain-lending-delinquency-collections
 domain-lending-loan-origination
 domain-lending-loan-servicing
+domain-lending-mortgage
 domain-lending-personal-loans
+domain-lending-provisioning-risk
+domain-lending-regulatory-compliance
+domain-lending-supply-chain-finance
 domain-product-catalog
 domain-product-pricing
 exp-accounts
