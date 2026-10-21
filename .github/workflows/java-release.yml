@@ -150,9 +150,16 @@ jobs:
             elif [ -n "$DEPLOY_MODULE" ]; then
               echo "Deploying aggregate pom + module: $DEPLOY_MODULE"
               mvn -B -ntp install $SKIP_FLAGS -pl ":$DEPLOY_MODULE" -am
-              mvn -B -ntp deploy $SKIP_FLAGS -pl ".,:$DEPLOY_MODULE" $deploy_flags \
+              # Central flattens the aggregator and drops dependencyManagement.
+              # Keep reactor siblings on that deploy so their versions still resolve.
+              local reactor_flags=""
+              if [[ "$deploy_flags" == *maven-central* ]]; then
+                reactor_flags="-am"
+              fi
+              mvn -B -ntp deploy $SKIP_FLAGS -pl ".,:$DEPLOY_MODULE" $reactor_flags $deploy_flags \
                 2>&1 | tee /tmp/mvn-deploy.log || {
-                  if grep -Eq "status code: 409|HTTP Status: 409" /tmp/mvn-deploy.log; then
+                  if grep -Eq "status code: 409|HTTP Status: 409" /tmp/mvn-deploy.log && \
+                     [ -z "$(grep -i 'Failed to deploy' /tmp/mvn-deploy.log | grep -v '409' || true)" ]; then
                     echo "::warning::Artifact already exists (409)"
                   else
                     echo "::error::Deploy to ${label} failed"
