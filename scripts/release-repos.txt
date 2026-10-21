@@ -48,6 +48,7 @@ domain-common-notifications
 domain-common-sca
 domain-core-configuration
 domain-core-pricing-engine
+domain-core-reference-data
 domain-core-security-center
 domain-customer-kyc-kyb
 domain-customer-people
