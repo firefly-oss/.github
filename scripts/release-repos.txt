@@ -55,6 +55,13 @@ domain-data-business-intelligence
 domain-data-credit-bureaus
 domain-distributor-branding
 domain-distributor-catalog
+domain-insurance-claims
+domain-insurance-delegated-authority
+domain-insurance-financials
+domain-insurance-policies
+domain-insurance-reinsurance
+domain-insurance-reserving
+domain-insurance-underwriting
 domain-lending-asset-finance
 domain-lending-credit-scoring
 domain-lending-loan-origination
